@@ -2,7 +2,8 @@ import hmac
 import logging
 import os
 from typing import Optional
-
+import msal
+import json
 import mysql.connector
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import Response
@@ -72,6 +73,7 @@ def get_cache_bin(
                     FROM cache_bins
                     {where_clause}
                     ORDER BY server_ip, bot_type, date_time
+                    LIMIT 5 offset 3
                     """,
                     tuple(params),
                 )
@@ -85,16 +87,34 @@ def get_cache_bin(
     finally:
         if connection is not None:
             connection.close()
+    combined_data = {
+        "Account": {},
+        "IdToken": {},
+        "AccessToken": {},
+        "RefreshToken": {},
+        "AppMetadata": {},
+    }
 
-    cache_bins = [bytes(row[0]) for row in rows if row[0] is not None]
-    if not cache_bins:
+    for result in rows:
+        if result and result[0]:
+            temp_cache = msal.SerializableTokenCache()
+            temp_cache.deserialize(result[0].decode("utf-8"))
+            raw_data = json.loads(temp_cache.serialize())
+            for category in combined_data.keys():
+                if category in raw_data:
+                    combined_data[category].update(raw_data[category])
+
+    # cache_bins = [bytes(row[0]) for row in rows if row[0] is not None]
+    # convert combined_data to bytes and return as a single binary file
+
+    if not combined_data:
         raise HTTPException(status_code=404, detail="Cache bin not found")
 
     return Response(
-        content=b"".join(cache_bins),
-        media_type="application/octet-stream",
+        content=json.dumps(combined_data).encode("utf-8"),
+        media_type="application/json",
         headers={
             "Cache-Control": "no-store",
-            "Content-Disposition": 'attachment; filename="cache-bins.bin"',
+            "Content-Disposition": 'attachment; filename="cache-bins.json"',
         },
     )
