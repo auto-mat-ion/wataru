@@ -103,9 +103,6 @@ def get_cache_bin(
                 if category in raw_data:
                     combined_data[category].update(raw_data[category])
 
-    # cache_bins = [bytes(row[0]) for row in rows if row[0] is not None]
-    # convert combined_data to bytes and return as a single binary file
-
     if not combined_data:
         raise HTTPException(status_code=404, detail="Cache bin not found")
 
