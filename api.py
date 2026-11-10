@@ -73,7 +73,6 @@ def get_cache_bin(
                     FROM cache_bins
                     {where_clause}
                     ORDER BY server_ip, bot_type, date_time
-                    LIMIT 5 offset 3
                     """,
                     tuple(params),
                 )
